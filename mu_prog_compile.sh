@@ -48,4 +48,4 @@ gcc -Wall -pthread -lpigpiod_if2 -lrt *.c -o prog_mu > /home/pi/amussel/mu_i2c_p
 rm StringImage.h
 rm MU31S.cyacd
 # start programming and send ip address as an argument
-sudo ./prog_mu "${sship}" "${sshport}" "${myip}" > /home/pi/amussel/mu_i2c_programming/prog.log &
+./prog_mu "${sship}" "${sshport}" "${myip}" > /home/pi/amussel/mu_i2c_programming/prog.log &
