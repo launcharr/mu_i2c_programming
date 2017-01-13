@@ -10,7 +10,7 @@
 
 #include "communication_api.h"
 //#include "StringImage.h"
-#define DELAY_US 28000
+#define DELAY_US 30000
 int file_i2c, i2cbus = 1;
 
 /*******************************************************************************
