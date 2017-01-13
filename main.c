@@ -110,6 +110,7 @@ char my_ip[16];
 int ssh_port;
 struct sockaddr_in sendaddr, myaddr;
 int fd;
+static int curr_line = 0;
 
 
 
@@ -167,13 +168,17 @@ int main(int argc, char **argv)
 		broadcast_percentage(fd, sendaddr, 0);
 	#endif
 
-	OpenConnection();
+	if(OpenConnection() != CYRET_SUCCESS) {
+		printf("Can't acquire I2C bus!\n");
+		broadcast_percentage(fd, sendaddr, 120);
+		return 1;
+	}
 
 	RequestReadData(0x04, &rdBuf, 1);
 	if(rdBuf != 0x65) {
 		printf("Not in bootloader or I2C not working propperly.\n");
-		broadcast_percentage(fd, sendaddr, 120);
-		return 0;
+		broadcast_percentage(fd, sendaddr, 121);
+		return 1;
 	}
 
 	RequestReadData(0x77, &rdBuf, 1);
@@ -190,6 +195,7 @@ int main(int argc, char **argv)
 	{
 		/* Display the success message */
 		printf("Bootloading succesful\n");
+		broadcast_percentage(fd, sendaddr, 100);
 	}
 	else
 	{
@@ -210,8 +216,9 @@ int main(int argc, char **argv)
 
 void send_status(unsigned char arrayId, unsigned short rowNum) {
 
-	printf("arrayId: %02x\nRowNum: %d\n", arrayId, rowNum);
-	//broadcast_percentage(fd, sendaddr, (uint8_t)(100*rowNum/LINE_CNT));
+	curr_line++;
+	printf("arrayId: %02x\nRowNum: %d\nCurrLine: %d\n", arrayId, rowNum, curr_line);
+	broadcast_percentage(fd, sendaddr, (uint8_t)(100*curr_line/LINE_CNT));
 }
 
 uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc) {

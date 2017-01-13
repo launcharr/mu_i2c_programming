@@ -10,8 +10,8 @@
 
 #include "communication_api.h"
 //#include "StringImage.h"
-#define DELAY_US 30000
-int file_i2c, i2cbus = 1;
+#define DELAY_US 35000
+int pi, file_i2c, i2cbus = 1;
 uint8_t sda = 2, scl = 3;
 
 /*******************************************************************************
@@ -33,12 +33,12 @@ int OpenConnection()
 {
 	int i;
 
-	if (gpioInitialise() < 0) {
+	if (pi = pigpio_start(NULL, NULL) < 0) {
 		printf("Failed to initialise the gpio bus");
 		return(CYRET_ERR_COMM_MASK);
 	}
 
-	if( bbI2COpen(sda, scl, 100000) != 0) {
+	if( bb_i2c_open(pi, sda, scl, 100000) != 0) {
 		printf("Failed to open the i2c bus");
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -82,8 +82,8 @@ int OpenConnection()
 int CloseConnection(void)
 {
 	int i;
-	bbI2CClose(sda);
-	gpioTerminate();
+	bb_i2c_close(pi, sda);
+	pigpio_stop(pi);
 
 	usleep(DELAY_US);
 	return(CYRET_SUCCESS);
@@ -108,8 +108,8 @@ int CloseConnection(void)
 int WriteData(uint8_t* wrData, int byteCnt)
 {
 	int i, ret;
-	uint8_t inLen = 5+byteCnt+2, outLen = 1;
-	uint8_t inBuf[inLen], outBuf[1];
+	uint8_t inLen = 5+byteCnt+2;
+	uint8_t inBuf[inLen];
 
 	inBuf[0] = 0x04; //set addr
 	inBuf[1] = slave_addr; // addr
@@ -124,7 +124,7 @@ int WriteData(uint8_t* wrData, int byteCnt)
 	inBuf[inLen-1] = 0x00; // end command
 
 	// PGPIO lib
-	if (ret = bbI2CZip(sda, inBuf, inLen, outBuf, outLen) < 0) {
+	if (ret = bb_i2c_zip(pi, sda, inBuf, inLen, NULL, 0) < 0) {
 		printf("Unable to write data... %d\n", ret);
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -134,7 +134,7 @@ int WriteData(uint8_t* wrData, int byteCnt)
 	usleep(DELAY_US);
 
 	return(CYRET_SUCCESS);
-	
+
 }
 
 /*******************************************************************************
@@ -159,8 +159,8 @@ int WriteData(uint8_t* wrData, int byteCnt)
 int RequestWriteData(uint8_t req, uint8_t* wrData, int byteCnt) {
 
 	int i;
-	uint8_t inLen = 9+byteCnt+2, outLen = 1;
-	uint8_t inBuf[inLen], outBuf[outLen];
+	uint8_t inLen = 9+byteCnt+2;
+	uint8_t inBuf[inLen];
 
 	if(byteCnt > 32) {
 		printf("Byte count larger than 32 bits...\n");
@@ -183,7 +183,7 @@ int RequestWriteData(uint8_t req, uint8_t* wrData, int byteCnt) {
 	inBuf[inLen-1] = 0x00; // end commands
 
 	// write request
-	if (bbI2CZip(sda, inBuf, inLen, outBuf, outLen) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
+	if (bb_i2c_zip(pi, sda, inBuf, inLen, NULL, 0) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
 	{
 		/* ERROR HANDLING: i2c transaction failed */
 		printf("Failed to write to the i2c bus.\n");
@@ -227,7 +227,7 @@ int ReadData(uint8_t* rdData, int byteCnt)
 	inBuf[6] = 0x00; // end command
 
 	// PGPIO lib
-	if (ret = bbI2CZip(sda, inBuf, inLen, rdData, byteCnt) < 0) {
+	if (ret = bb_i2c_zip(pi, sda, inBuf, inLen, rdData, byteCnt) < 0) {
 		printf("Unable to write data... %d\n", ret);
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -280,7 +280,7 @@ int RequestReadData(uint8_t req, uint8_t* rdData, int byteCnt)
 	inBuf[10] = 0x00; // end commands
 
 	// write request
-	if (num = bbI2CZip(sda, inBuf, inLen, rdBuf, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
+	if (num = bb_i2c_zip(pi, sda, inBuf, inLen, rdData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
 	{
 		/* ERROR HANDLING: i2c transaction failed */
 		printf("Failed to read from the i2c bus. data = %x num = %d byteCnt = %d\n", rdData[0], num, byteCnt);

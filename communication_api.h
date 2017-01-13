@@ -13,7 +13,7 @@
 #include <sys/ioctl.h>			//Needed for I2C port
 #include <linux/i2c-dev.h>		//Needed for I2C port
 #include <linux/i2c.h>
-#include <pigpio.h>
+#include <pigpiod_if2.h>
 //#include "StringImage.h"
 /* Slave address for I2C used for bootloading.Replace this constant value with your
 *  bootloader slave address project */

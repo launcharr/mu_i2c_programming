@@ -5,12 +5,12 @@ trap "" HUP
 #sudo kill $PID
 
 #sudo killall pigpiod
-if [ -f /var/run/pigpio.pid ]; then
-	echo "Entered" > tmp
-	PID=$(cat /var/run/pigpio.pid)
-	echo $PID
-	sudo kill -9 $PID
-fi
+#if [ -f /var/run/pigpio.pid ]; then
+#	echo "Entered" > tmp
+#	PID=$(cat /var/run/pigpio.pid)
+#	echo $PID
+#	sudo kill -9 $PID
+#fi
 
 
 
@@ -42,7 +42,7 @@ cd /home/pi/amussel/mu_i2c_programming
 rm prog*
 
 
-gcc -Wall -pthread -lpigpio -lrt *.c -o prog_mu > /home/pi/amussel/mu_i2c_programming/cmpl.log
+gcc -Wall -pthread -lpigpiod_if2 -lrt *.c -o prog_mu > /home/pi/amussel/mu_i2c_programming/cmpl.log
 
 # remove used StringImage.h
 #rm StringImage.h
