@@ -32,7 +32,7 @@ int OpenConnection()
 {
 	int i;
 
-	if (pi = pigpio_start() < 0) {
+	if (pi = pigpio_start(NULL, NULL) < 0) {
 		printf("Failed to initialise the gpio bus\n");
 		return(CYRET_ERR_COMM_MASK);
 	}
