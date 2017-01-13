@@ -45,7 +45,7 @@ rm prog*
 gcc -Wall -pthread -lpigpio -lrt *.c -o prog_mu > /home/pi/amussel/mu_i2c_programming/cmpl.log
 
 # remove used StringImage.h
-rm StringImage.h
+#rm StringImage.h
 
 # start programming and send ip address as an argument
 sudo ./prog_mu "${sship}" "${sshport}" "${myip}" > /home/pi/amussel/mu_i2c_programming/prog.log &

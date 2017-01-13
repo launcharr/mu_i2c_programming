@@ -12,6 +12,7 @@
 //#include "StringImage.h"
 #define DELAY_US 30000
 int file_i2c, i2cbus = 1;
+uint8_t sda = 2, scl = 3;
 
 /*******************************************************************************
 * Function Name: OpenConnection
@@ -37,7 +38,7 @@ int OpenConnection()
 		return(CYRET_ERR_COMM_MASK);
 	}
 
-	if( file_i2c = i2cOpen(i2cbus, slave_addr, 0) < 0) {
+	if( bbI2COpen(sda, scl, 100000) != 0) {
 		printf("Failed to open the i2c bus");
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -49,7 +50,7 @@ int OpenConnection()
 		printf("Failed to open the i2c bus");
 		return(CYRET_ERR_COMM_MASK);
 	}
-	
+
 	if (ioctl(file_i2c, I2C_SLAVE, SLAVE_ADDR) < 0)
 	{
 		printf("Failed to acquire bus access and/or talk to slave.\n");
@@ -81,7 +82,7 @@ int OpenConnection()
 int CloseConnection(void)
 {
 	int i;
-	i2cClose(file_i2c);
+	bbI2CClose(sda);
 	gpioTerminate();
 
 	usleep(DELAY_US);
@@ -106,50 +107,24 @@ int CloseConnection(void)
 *******************************************************************************/
 int WriteData(uint8_t* wrData, int byteCnt)
 {
-	int i, ii, ret;
-	//struct i2c_msg msg;
-	//struct i2c_rdwr_ioctl_data pack;
+	int i, ret;
+	uint8_t inLen = 5+byteCnt+2, outLen = 1;
+	uint8_t inBuf[inLen], outBuf[1];
 
-	/*if(byteCnt > 32) {
-		printf("Byte count larger than 32 bits...\n");
-		return(CYRET_ERR_COMM_MASK);
-	}*/
-	// WRITE
-	/*
-	if (write(file_i2c, wrData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
-	{
-		//ERROR HANDLING: i2c transaction failed
-		printf("Failed to write to the i2c bus.\n");
-		return(CYRET_ERR_COMM_MASK);
-	}
-	*/
+	inBuf[0] = 0x04; //set addr
+	inBuf[1] = slave_addr; // addr
+	inBuf[2] = 0x02; // start
+	inBuf[3] = 0x07; // write
+	inBuf[4] = byteCnt; // byteCnt
 
-	// SMBUS byte by byte
-	/*
 	for(i=0;i<byteCnt;i++) {
-		i2c_smbus_write_byte(file_i2c, wrData[i]);
-		for(ii=0;ii<100;ii++);
-	}*/
-
-
-	// IOCTL lib
-	/*
-	msg.addr = SLAVE_ADDR;
-	msg.flags = 0;
-	msg.len = byteCnt;
-	msg.buf = wrData;
-
-	pack.msgs = &msg;
-	pack.nmsgs = 1;
-
-	if( ioctl(file_i2c, I2C_RDWR, &pack) < 0 ) {
-		printf("Unable to write data...\n");
-		return(CYRET_ERR_COMM_MASK);
+		inBuf[5+i] = wrData[i]; // put data in buffer
 	}
-	*/
+	inBuf[inLen-2] = 0x03; // stop conditio
+	inBuf[inLen-1] = 0x00; // end command
 
 	// PGPIO lib
-	if (ret = i2cWriteDevice(file_i2c, wrData, byteCnt) != 0) {
+	if (ret = bbI2CZip(sda, inBuf, inLen, outBuf, outLen) < 0) {
 		printf("Unable to write data... %d\n", ret);
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -184,13 +159,31 @@ int WriteData(uint8_t* wrData, int byteCnt)
 int RequestWriteData(uint8_t req, uint8_t* wrData, int byteCnt) {
 
 	int i;
+	uint8_t inLen = 9+byteCnt+2, outLen = 1;
+	uint8_t inBuf[inLen], outBuf[outLen];
 
 	if(byteCnt > 32) {
 		printf("Byte count larger than 32 bits...\n");
 		return(CYRET_ERR_COMM_MASK);
 	}
-    // write request
-	if (i2cWriteI2CBlockData(file_i2c, req, wrData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
+
+	inBuf[0] = 0x04; //set addr
+	inBuf[1] = slave_addr; // addr
+	inBuf[2] = 0x02; // start
+	inBuf[3] = 0x07; // write
+	inBuf[4] = 1; // request size
+	inBuf[5] = req; // request
+	inBuf[6] = 0x02; // (re)start
+	inBuf[7] = 0x07; // write
+	inBuf[8] = byteCnt; // amount of data to be written
+	for(i=0;i<byteCnt;i++) {
+		inBuf[9+i] = wrData[i]; // put data in buffer
+	}
+	inBuf[inLen-2] = 0x03; // stop
+	inBuf[inLen-1] = 0x00; // end commands
+
+	// write request
+	if (bbI2CZip(sda, inBuf, inLen, outBuf, outLen) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
 	{
 		/* ERROR HANDLING: i2c transaction failed */
 		printf("Failed to write to the i2c bus.\n");
@@ -221,49 +214,25 @@ int RequestWriteData(uint8_t req, uint8_t* wrData, int byteCnt) {
 *******************************************************************************/
 int ReadData(uint8_t* rdData, int byteCnt)
 {
-	int i, ii, ret;
-	//struct i2c_msg msg;
-	//struct i2c_rdwr_ioctl_data pack;
+	int i, ret;
+	uint8_t inLen = 7;
+	uint8_t inBuf[inLen];
 
-	/*if(byteCnt > 32) {
-		printf("Byte count larger than 32 bits...\n");
-		return(CYRET_ERR_COMM_MASK);
-	}*/
+	inBuf[0] = 0x04; //set addr
+	inBuf[1] = slave_addr; // addr
+	inBuf[2] = 0x02; // start
+	inBuf[3] = 0x06; // read
+	inBuf[4] = byteCnt; // byteCnt
+	inBuf[5] = 0x03; // stop conditio
+	inBuf[6] = 0x00; // end command
 
-	/* //----- READ BYTES -----
-	if (read(file_i2c, rdData, byteCnt) != byteCnt)		//read() returns the number of bytes actually read, if it doesn't match then an error occurred (e.g. no response from the device)
-	{
-		//ERROR HANDLING: i2c transaction failed
-		printf("Failed to read from the i2c bus.\n");
-		return(CYRET_ERR_COMM_MASK);
-	}
-	*/
-	/*
-	for(i=0;i<byteCnt;i++) {
-		rdData[i] = i2c_smbus_read_byte(file_i2c);
-		for(ii=0;ii<100;ii++);
-	}*/
-	/*
-	msg.addr = SLAVE_ADDR;
-	msg.flags = I2C_M_RD;
-	msg.len = byteCnt;
-	msg.buf = rdData;
-
-	pack.msgs = &msg;
-	pack.nmsgs = 1;
-
-	if( ioctl(file_i2c, I2C_RDWR, &pack) < 0) {
-		printf("Unable to read data...");
-		return(CYRET_ERR_COMM_MASK);
-	}
-	*/
-
-	// PIGPIO lib
-	if (ret = i2cReadDevice(file_i2c, rdData, byteCnt) != byteCnt) {
-		printf("Unable to read data... %d\n", ret);
+	// PGPIO lib
+	if (ret = bbI2CZip(sda, inBuf, inLen, rdData, byteCnt) < 0) {
+		printf("Unable to write data... %d\n", ret);
 		return(CYRET_ERR_COMM_MASK);
 	}
 
+	usleep(DELAY_US/20);
 
 	return(CYRET_SUCCESS);
 }
@@ -289,13 +258,29 @@ int ReadData(uint8_t* rdData, int byteCnt)
 int RequestReadData(uint8_t req, uint8_t* rdData, int byteCnt)
 {
 	int i, num;
+	uint8_t inLen = 11;
+	uint8_t inBuf[inLen];
+	char outBuf;
 
 	if(byteCnt > 32) {
 		printf("Byte count larger than 32 bits...\n");
 		return(CYRET_ERR_COMM_MASK);
 	}
-    // write request
-	if (num = i2cReadI2CBlockData(file_i2c, req, rdData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
+
+	inBuf[0] = 0x04; //set addr
+	inBuf[1] = slave_addr; // addr
+	inBuf[2] = 0x02; // start
+	inBuf[3] = 0x07; // write
+	inBuf[4] = 1; // request size
+	inBuf[5] = req; // request
+	inBuf[6] = 0x02; // (re)start
+	inBuf[7] = 0x06; // read
+	inBuf[8] = (uint8_t) byteCnt; // amount of data to be read
+	inBuf[9] = 0x03; // stop
+	inBuf[10] = 0x00; // end commands
+
+	// write request
+	if (num = bbI2CZip(sda, inBuf, inLen, rdBuf, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
 	{
 		/* ERROR HANDLING: i2c transaction failed */
 		printf("Failed to read from the i2c bus. data = %x num = %d byteCnt = %d\n", rdData[0], num, byteCnt);
