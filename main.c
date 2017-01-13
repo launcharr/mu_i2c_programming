@@ -87,7 +87,6 @@
 #include "communication_api.h"
 #include "cybtldr_api.h"
 #include "StringImage.h"
-
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -102,6 +101,7 @@
 #define BRDCST_STAT 1
 
 uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc);
+void send_status(unsigned char arrayId, unsigned short rowNum);
 /* This structure contains function pointers to the four communication layer functions 
    contained in the communication_api.c / .h */
 CyBtldr_CommunicationsData comm1;
@@ -116,7 +116,7 @@ int fd;
 int main(int argc, char **argv)
 {
     /* error holds the success / failure message of the bootload operation */
-	uint8_t error = 0, rdBuf, rd4[10], strt = 0x77;
+	uint8_t error = 0, rdBuf, rd4[10], strt = 0x77, securityKey = 0, appID = 1;
 	int32_t time;
 	int ii, j=0, n = 1000;
 
@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 
 	/* Select the Bootloadable files based on the target device */
 
-	error = CyBtldr_Program(CYACD_PATH, NULL, NULL, 1, &CyBtldr_ProgressUpdate);
+	error = CyBtldr_Program(CYACD_PATH, &securityKey, appID, &comm1, &send_status);
 
 	/* Check if the bootload operation is successful */
 	if(error == CYRET_SUCCESS)
@@ -206,8 +206,8 @@ int main(int argc, char **argv)
 	return 0;
 }
 
-void CyBtldr_ProgressUpdate(unsigned char arrayId, unsigned short rowNum) {
-	
+void send_status(unsigned char arrayId, unsigned short rowNum) {
+
 	broadcast_percentage(fd, sendaddr, (uint8_t)(100*rowNum/LINE_CNT));
 }
 

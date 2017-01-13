@@ -86,7 +86,7 @@ int CyBtldr_RunAction(CyBtldr_Action action, const char* file, const unsigned ch
 *   CYRET_ABORT		    - The operation was aborted
 *
 *******************************************************************************/
-EXTERN int CALL_CON CyBtldr_Program(const char* file, const unsigned char* securityKey, 
+EXTERN int CyBtldr_Program(const char* file, const unsigned char* securityKey, 
     unsigned char appId, CyBtldr_CommunicationsData* comm, CyBtldr_ProgressUpdate* update);
 
 /*******************************************************************************
@@ -116,7 +116,7 @@ EXTERN int CALL_CON CyBtldr_Program(const char* file, const unsigned char* secur
 *   CYRET_ABORT		    - The operation was aborted
 *
 *******************************************************************************/
-EXTERN int CALL_CON CyBtldr_Erase(const char* file, const unsigned char* securityKey, 
+EXTERN int CyBtldr_Erase(const char* file, const unsigned char* securityKey, 
     CyBtldr_CommunicationsData* comm, CyBtldr_ProgressUpdate* update);
 
 /*******************************************************************************
@@ -152,7 +152,7 @@ EXTERN int CALL_CON CyBtldr_Erase(const char* file, const unsigned char* securit
 *   CYRET_ABORT		    - The operation was aborted
 *
 *******************************************************************************/
-EXTERN int CALL_CON CyBtldr_Verify(const char* file, const unsigned char* securityKey, 
+EXTERN int CyBtldr_Verify(const char* file, const unsigned char* securityKey, 
     CyBtldr_CommunicationsData* comm, CyBtldr_ProgressUpdate* update);
 
 /*******************************************************************************

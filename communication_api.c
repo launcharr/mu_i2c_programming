@@ -81,8 +81,8 @@ int OpenConnection()
 int CloseConnection(void)
 {
 	int i;
-	gpioTerminate();
 	i2cClose(file_i2c);
+	gpioTerminate();
 
 	usleep(DELAY_US);
 	return(CYRET_SUCCESS);
