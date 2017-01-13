@@ -67,6 +67,10 @@ int CyBtldr_ParseDefaultCmdResult(unsigned char* cmdBuf, unsigned long cmdSize, 
     else
         *status = cmdBuf[1];
 
+    if (err==CYRET_ERR_DATA) {
+        printf("Parse default cmd\n");
+    }
+
     return err;
 }
 
@@ -116,6 +120,10 @@ int CyBtldr_ParseEnterBootLoaderCmdResult(unsigned char* cmdBuf, unsigned long c
         *siliconRev = cmdBuf[8];
         *blVersion = (cmdBuf[11] << 16) | (cmdBuf[10] << 8) | cmdBuf[9];
         *status = cmdBuf[1];
+	printf("siliconID: %08x \nsiliconRev: %02x\nblVersion: %06x\nstatus: %02x\n",*siliconId,*siliconRev,*blVersion,*status);
+    }
+    if (err==CYRET_ERR_DATA) {
+        printf("Parse enter btld cmd\n");
     }
 
     return err;
@@ -210,6 +218,9 @@ int CyBtldr_ParseVerifyRowCmdResult(unsigned char* cmdBuf, unsigned long cmdSize
         *checksum = cmdBuf[4];
         *status = cmdBuf[1];
     }
+    if (err==CYRET_ERR_DATA) {
+        printf("Parse cerify row cmd\n");
+    }
 
     return err;
 }
@@ -278,6 +289,9 @@ int CyBtldr_ParseVerifyChecksumCmdResult(unsigned char* cmdBuf, unsigned long cm
         *checksumValid = cmdBuf[4];
         *status = cmdBuf[1];
     }
+    if (err==CYRET_ERR_DATA) {
+        printf("Parse verify chksm cmd\n");
+    }
 
     return err;
 }
@@ -321,6 +335,9 @@ int CyBtldr_ParseGetFlashSizeCmdResult(unsigned char* cmdBuf, unsigned long cmdS
         *startRow = (cmdBuf[5] << 8) | cmdBuf[4];
         *endRow = (cmdBuf[7] << 8) | cmdBuf[6];
         *status = cmdBuf[1];
+    }
+    if (err==CYRET_ERR_DATA) {
+        printf("Parse flash cmd\n");
     }
 
     return err;
@@ -409,6 +426,9 @@ int CyBtldr_ParseGetAppStatusCmdResult(unsigned char* cmdBuf, unsigned long cmdS
         *isValid = cmdBuf[4];
         *isActive = cmdBuf[5];
         *status = cmdBuf[1];
+    }
+    if (err==CYRET_ERR_DATA) {
+        printf("Parse app cmd\n");
     }
 
     return err;
