@@ -116,8 +116,10 @@ int fd;
 int main(int argc, char **argv)
 {
     /* error holds the success / failure message of the bootload operation */
-	uint8_t error = 0, rdBuf, rd4[10], strt = 0x77, securityKey = 0, appID = 1;
+	uint8_t rdBuf, rd4[10], strt = 0x77;
+	unsigned char securityKey[] = {0x11,0x22,0x33,0x44,0x55,0x66}, appID = 1;
 	int32_t time;
+	uint16_t error = 0;
 	int ii, j=0, n = 1000;
 
 	if (argc > 1) {
@@ -139,11 +141,9 @@ int main(int argc, char **argv)
 	comm1.MaxTransferSize = 32;
 
 	#if BRDCST_STAT == 1
-		struct sockaddr_in sendaddr, myaddr;
-		int fd;
-
 	        if( (fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
 			printf("Error creating a socket!!\n");
+			broadcast_percentage(fd, sendaddr, 110);
 			return 1;
 		}
 		// set and bindaddress of the pi
@@ -154,6 +154,7 @@ int main(int argc, char **argv)
 
 		if (bind(fd, (struct sockaddr *)&myaddr, sizeof(myaddr)) < 0) {
 			printf("Bind failed!!\n");
+			broadcast_percentage(fd, sendaddr, 111);
 			close(fd);
 			return 1;
 		}
@@ -163,13 +164,15 @@ int main(int argc, char **argv)
 		sendaddr.sin_family = AF_INET;
 		inet_pton(AF_INET, ssh_ip, &sendaddr.sin_addr.s_addr);
 	        sendaddr.sin_port=htons(ssh_port);
+		broadcast_percentage(fd, sendaddr, 0);
 	#endif
-	
+
 	OpenConnection();
 
 	RequestReadData(0x04, &rdBuf, 1);
 	if(rdBuf != 0x65) {
 		printf("Not in bootloader or I2C not working propperly.\n");
+		broadcast_percentage(fd, sendaddr, 120);
 		return 0;
 	}
 
@@ -180,9 +183,7 @@ int main(int argc, char **argv)
 	usleep(100);
 	printf("Bootloading...\n");
 
-	/* Select the Bootloadable files based on the target device */
-
-	error = CyBtldr_Program(CYACD_PATH, &securityKey, appID, &comm1, &send_status);
+	error = CyBtldr_Program(CYACD_PATH, securityKey, appID, &comm1, &send_status);
 
 	/* Check if the bootload operation is successful */
 	if(error == CYRET_SUCCESS)
@@ -196,11 +197,12 @@ int main(int argc, char **argv)
 		if(error & CYRET_ERR_COMM_MASK) /* Check for comm error*/
 		{
 			printf("I2C communication Error\n");
+			broadcast_percentage(fd, sendaddr, 130);
 		}
 		else /* Else Display the bootload error code */
 		{
-			printf("Bootload Err: %04x \n", error);
-			broadcast_percentage(fd, sendaddr, 150);
+			printf("Bootload Err: %08x \n", error);
+			broadcast_percentage(fd, sendaddr, 131);
 		}
 	}
 	return 0;
@@ -208,7 +210,8 @@ int main(int argc, char **argv)
 
 void send_status(unsigned char arrayId, unsigned short rowNum) {
 
-	broadcast_percentage(fd, sendaddr, (uint8_t)(100*rowNum/LINE_CNT));
+	printf("arrayId: %02x\nRowNum: %d\n", arrayId, rowNum);
+	//broadcast_percentage(fd, sendaddr, (uint8_t)(100*rowNum/LINE_CNT));
 }
 
 uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc) {

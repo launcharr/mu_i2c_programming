@@ -9,7 +9,7 @@
 #define __CYBTLDR_API2_H__
 
 #include "cybtldr_utils.h"
-
+#include "cybtldr_api.h"
 /*
  * This enum defines the different operations that can be performed
  * by the bootloader host.
