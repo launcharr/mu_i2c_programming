@@ -11,7 +11,7 @@
 #include "communication_api.h"
 //#include "StringImage.h"
 #define DELAY_US 30000
-int file_i2c, i2cbus = 1;
+int pi, file_i2c, i2cbus = 1;
 
 /*******************************************************************************
 * Function Name: OpenConnection
@@ -32,13 +32,13 @@ int OpenConnection()
 {
 	int i;
 
-	if (gpioInitialise() < 0) {
-		printf("Failed to initialise the gpio bus");
+	if (pi = pigpio_start() < 0) {
+		printf("Failed to initialise the gpio bus\n");
 		return(CYRET_ERR_COMM_MASK);
 	}
 
-	if( file_i2c = i2cOpen(i2cbus, slave_addr, 0) < 0) {
-		printf("Failed to open the i2c bus");
+	if( file_i2c = i2c_open(pi, i2cbus, slave_addr, 0) < 0) {
+		printf("Failed to open the i2c bus\n");
 		return(CYRET_ERR_COMM_MASK);
 	}
 
@@ -80,9 +80,8 @@ int OpenConnection()
 *******************************************************************************/
 int CloseConnection(void)
 {
-	int i;
-	i2cClose(file_i2c);
-	gpioTerminate();
+	i2c_close(pi, file_i2c);
+	pigpio_stop(pi);
 
 	usleep(DELAY_US);
 	return(CYRET_SUCCESS);
@@ -149,7 +148,7 @@ int WriteData(uint8_t* wrData, int byteCnt)
 	*/
 
 	// PGPIO lib
-	if (ret = i2cWriteDevice(file_i2c, wrData, byteCnt) != 0) {
+	if (ret = i2c_write_device(pi, file_i2c, wrData, byteCnt) != 0) {
 		printf("Unable to write data... %d\n", ret);
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -190,7 +189,7 @@ int RequestWriteData(uint8_t req, uint8_t* wrData, int byteCnt) {
 		return(CYRET_ERR_COMM_MASK);
 	}
     // write request
-	if (i2cWriteI2CBlockData(file_i2c, req, wrData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
+	if (i2c_write_i2c_block_data(pi, file_i2c, req, wrData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
 	{
 		/* ERROR HANDLING: i2c transaction failed */
 		printf("Failed to write to the i2c bus.\n");
@@ -259,7 +258,7 @@ int ReadData(uint8_t* rdData, int byteCnt)
 	*/
 
 	// PIGPIO lib
-	if (ret = i2cReadDevice(file_i2c, rdData, byteCnt) != byteCnt) {
+	if (ret = i2c_read_device(pi, file_i2c, rdData, byteCnt) != byteCnt) {
 		printf("Unable to read data... %d\n", ret);
 		return(CYRET_ERR_COMM_MASK);
 	}
@@ -295,7 +294,7 @@ int RequestReadData(uint8_t req, uint8_t* rdData, int byteCnt)
 		return(CYRET_ERR_COMM_MASK);
 	}
     // write request
-	if (num = i2cReadI2CBlockData(file_i2c, req, rdData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
+	if (num = i2c_read_i2c_block_data(pi, file_i2c, req, rdData, byteCnt) != byteCnt)		//write() returns the number of bytes actually written, if it doesn't match then an error occurred (e.g. no response from the device)
 	{
 		/* ERROR HANDLING: i2c transaction failed */
 		printf("Failed to read from the i2c bus. data = %x num = %d byteCnt = %d\n", rdData[0], num, byteCnt);
