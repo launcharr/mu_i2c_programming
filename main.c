@@ -182,7 +182,7 @@ int main(int argc, char **argv)
 
 	/* Select the Bootloadable files based on the target device */
 
-	error = CyBtldr_Program(stringImage, NULL, NULL, 1, &CyBtldr_ProgressUpdate);
+	error = CyBtldr_Program(CYACD_PATH, NULL, NULL, 1, &CyBtldr_ProgressUpdate);
 
 	/* Check if the bootload operation is successful */
 	if(error == CYRET_SUCCESS)
