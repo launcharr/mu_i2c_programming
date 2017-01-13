@@ -81,11 +81,13 @@
 ****************************************************************************************************/
 
 #include "string.h"
+#include "cybtldr_api2.h"
 #include "cybtldr_parse.h"
 #include "cybtldr_command.h"
 #include "communication_api.h"
 #include "cybtldr_api.h"
 #include "StringImage.h"
+
 #include <stdlib.h>
 #include <sys/types.h>
 #include <sys/socket.h>
@@ -99,16 +101,17 @@
 
 #define BRDCST_STAT 1
 
-/* This function bootloads the .cyacd file. It sends command packets and flash data to the target.
-   Based on the response from the target, it decides whether to continue bootloading. */
-unsigned char BootloadStringImage(const char *bootloadImagePtr[],unsigned int lineCount );
-
+uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc);
 /* This structure contains function pointers to the four communication layer functions 
    contained in the communication_api.c / .h */
 CyBtldr_CommunicationsData comm1;
 char ssh_ip[16];
 char my_ip[16];
 int ssh_port;
+struct sockaddr_in sendaddr, myaddr;
+int fd;
+
+
 
 int main(int argc, char **argv)
 {
@@ -135,100 +138,8 @@ int main(int argc, char **argv)
 	comm1.WriteData =&WriteData;
 	comm1.MaxTransferSize = 32;
 
-
-	OpenConnection();
-
-	RequestReadData(0x04, &rdBuf, 1);
-	if(rdBuf != 0x65) {
-		printf("Not in bootloader or I2C not working propperly.\n");
-		return 0;
-	}
-
-	RequestReadData(0x77, &rdBuf, 1);
-
-	CloseConnection();
-
-	usleep(100);
-	printf("Bootloading...\n");
-
-	/* Select the Bootloadable files based on the target device */
-
-	error = BootloadStringImage(stringImage,LINE_CNT);
-
-	/* Check if the bootload operation is successful */
-	if(error == CYRET_SUCCESS)
-	{
-		/* Display the success message */
-		printf("Bootloading succesful\n");
-	}
-	else
-	{
-		/* Display the failure message along with the approiate error code */
-		if(error & CYRET_ERR_COMM_MASK) /* Check for comm error*/
-		{
-			printf("I2C communication Error\n");
-		}
-		else /* Else Display the bootload error code */
-		{
-			printf("Bootload Err: %04x \n", error);
-		}
-	}
-	return 0;
-}
-
-
-
-uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc) {
-
-	//char *message;
-
-	if (sendto(fd, &perc, sizeof(perc), 0,(struct sockaddr *) &addr, sizeof(addr)) < 0)
-	{
-		perror("Sending failed!!\n");
-		return 0;
-	}
-	return 1;
-}
-
-
-
-/****************************************************************************************************
-* Function Name: BootloadStringImage
-*****************************************************************************************************
-*
-* Summary:
-*  Bootloads the .cyacd file contents which is stored as string array
-*
-* Parameters:  
-* bootloadImagePtr - Pointer to the string array
-* lineCount - No. of lines in the .cyacd file(No: of rows in the string array)
-*
-* Return: 
-*  Returns a flag to indicate whether the bootload operation was successful or not
-*
-*
-****************************************************************************************************/
-uint8_t BootloadStringImage(const char *bootloadImagePtr[],unsigned int lineCount )
-{
-	unsigned char err;
-	unsigned char arrayId; 
-	unsigned short rowNum;
-	unsigned short rowSize; 
-	unsigned char checksum ;
-	unsigned char checksum2;
-	unsigned long blVer=0;
-	/* rowData buffer size should be equal to the length of data to be send for each flash row 
-	* Equals 288 , if ECC  is disabled in the bootloadable project
-	* Else 255 */
-	unsigned char rowData[288];
-	unsigned int lineLen;
-	unsigned long  siliconID;
-	unsigned char siliconRev;
-	unsigned char packetChkSumType;
-	unsigned int lineCntr ;
-
 	#if BRDCST_STAT == 1
-        	struct sockaddr_in sendaddr, myaddr;
+		struct sockaddr_in sendaddr, myaddr;
 		int fd;
 
 	        if( (fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
@@ -252,75 +163,67 @@ uint8_t BootloadStringImage(const char *bootloadImagePtr[],unsigned int lineCoun
 		sendaddr.sin_family = AF_INET;
 		inet_pton(AF_INET, ssh_ip, &sendaddr.sin_addr.s_addr);
 	        sendaddr.sin_port=htons(ssh_port);
-
-		broadcast_percentage(fd, sendaddr, (uint8_t)0);
 	#endif
+	
+	OpenConnection();
 
-	/* Initialize line counter */
-	lineCntr = 0;
-
-	/* Get length of the first line in cyacd file*/
-	lineLen = strlen(bootloadImagePtr[lineCntr]);
-
-	/* Parse the first line(header) of cyacd file to extract siliconID, siliconRev and packetChkSumType */
-	err = CyBtldr_ParseHeader(lineLen ,(unsigned char *)bootloadImagePtr[lineCntr] , &siliconID , &siliconRev ,&packetChkSumType);
-
-	/* Set the packet checksum type for communicating with bootloader. The packet checksum type to be used 
-	* is determined from the cyacd file header information */
-	CyBtldr_SetCheckSumType((CyBtldr_ChecksumType)packetChkSumType);
-
-	if(err==CYRET_SUCCESS)
-	{
-		/* Start Bootloader operation */
-		err = CyBtldr_StartBootloadOperation(&comm1 ,siliconID, siliconRev ,&blVer);
-		lineCntr++;
-		#if BRDCST_STAT == 1
-			broadcast_percentage(fd, sendaddr, (uint8_t)(100*lineCntr/lineCount));
-		#endif
-		while((err == CYRET_SUCCESS)&& ( lineCntr <  lineCount ))
-		{
-	            /* Get the string length for the line*/
-			lineLen =  strlen(bootloadImagePtr[lineCntr]);
-			/*Parse row data*/
-			err = CyBtldr_ParseRowData((unsigned int)lineLen,(unsigned char *)bootloadImagePtr[lineCntr], &arrayId, &rowNum, rowData, &rowSize, &checksum);
-
-			if (CYRET_SUCCESS == err)
-            		{
-				/* Program Row */
-				err = CyBtldr_ProgramRow(arrayId, rowNum, rowData, rowSize);
-
-				if (CYRET_SUCCESS == err)
-				{
-					/* Verify Row . Check whether the checksum received from bootloader matches
-					* the expected row checksum stored in cyacd file*/
-					checksum2 = (unsigned char)(checksum + arrayId + rowNum + (rowNum >> 8) + rowSize + (rowSize >> 8));
-					err = CyBtldr_VerifyRow(arrayId, rowNum, checksum2);
-				}
-		        }
-			/* Increment the linCntr */
-			lineCntr++;
-			#if BRDCST_STAT == 1
-				broadcast_percentage(fd, sendaddr, (uint8_t)(100*lineCntr/lineCount));
-			#endif
-		}
-		#if BRDCST_STAT == 1
-			if (err == CYRET_SUCCESS) {
-				broadcast_percentage(fd, sendaddr, 100);
-			}
-			else {
-				broadcast_percentage(fd, sendaddr, 123);
-			}
-			close(fd);
-			usleep(100);
-		#endif
-		printf("Bootload error: %04x\n",err);
-		usleep(200);
-		/* End Bootloader Operation */
-		CyBtldr_EndBootloadOperation();
+	RequestReadData(0x04, &rdBuf, 1);
+	if(rdBuf != 0x65) {
+		printf("Not in bootloader or I2C not working propperly.\n");
+		return 0;
 	}
-	return(err);
 
+	RequestReadData(0x77, &rdBuf, 1);
+
+	CloseConnection();
+
+	usleep(100);
+	printf("Bootloading...\n");
+
+	/* Select the Bootloadable files based on the target device */
+
+	error = CyBtldr_Program(stringImage, NULL, NULL, 1, &CyBtldr_ProgressUpdate);
+
+	/* Check if the bootload operation is successful */
+	if(error == CYRET_SUCCESS)
+	{
+		/* Display the success message */
+		printf("Bootloading succesful\n");
+	}
+	else
+	{
+		/* Display the failure message along with the approiate error code */
+		if(error & CYRET_ERR_COMM_MASK) /* Check for comm error*/
+		{
+			printf("I2C communication Error\n");
+		}
+		else /* Else Display the bootload error code */
+		{
+			printf("Bootload Err: %04x \n", error);
+			broadcast_percentage(fd, sendaddr, 150);
+		}
+	}
+	return 0;
 }
+
+void CyBtldr_ProgressUpdate(unsigned char arrayId, unsigned short rowNum) {
+	
+	broadcast_percentage(fd, sendaddr, (uint8_t)(100*rowNum/LINE_CNT));
+}
+
+uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc) {
+
+	//char *message;
+
+	if (sendto(fd, &perc, sizeof(perc), 0,(struct sockaddr *) &addr, sizeof(addr)) < 0)
+	{
+		perror("Sending failed!!\n");
+		return 0;
+	}
+	return 1;
+}
+
+
 
 
 /* [] END OF FILE */
