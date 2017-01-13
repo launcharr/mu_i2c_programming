@@ -45,7 +45,7 @@ rm prog*
 gcc -Wall -pthread -lpigpiod_if2 -lrt *.c -o prog_mu > /home/pi/amussel/mu_i2c_programming/cmpl.log
 
 # remove used StringImage.h
-rm StringImage.h
-rm MU31S.cyacd
+#rm StringImage.h
+#rm MU31S.cyacd
 # start programming and send ip address as an argument
 ./prog_mu "${sship}" "${sshport}" "${myip}" > /home/pi/amussel/mu_i2c_programming/prog.log &
