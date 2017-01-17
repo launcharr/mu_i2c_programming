@@ -1,19 +1,6 @@
 #!/bin/bash
 trap "" HUP
 
-#PID=$(ps ax | grep aMussel | head -n 1 | awk '{print $1}')
-#sudo kill $PID
-
-#sudo killall pigpiod
-#if [ -f /var/run/pigpio.pid ]; then
-#	echo "Entered" > tmp
-#	PID=$(cat /var/run/pigpio.pid)
-#	echo $PID
-#	sudo kill -9 $PID
-#fi
-
-
-
 # get last ssh ip address
 # sship=$(last | grep pts | head -n 1 | awk '{print $3}')
 sship=$(cat /var/log/auth.log | grep --text sshd | grep --text "Accepted password" | tail -n 1 | awk '{print $11}')
@@ -48,4 +35,4 @@ gcc -Wall -pthread -lpigpiod_if2 -lrt *.c -o prog_mu > /home/pi/amussel/mu_i2c_p
 #rm StringImage.h
 
 # start programming and send ip address as an argument
-sudo ./prog_mu "${sship}" "${sshport}" "${myip}" > /home/pi/amussel/mu_i2c_programming/prog.log &
+./prog_mu "${sship}" "${sshport}" "${myip}" > /home/pi/amussel/mu_i2c_programming/prog.log &
