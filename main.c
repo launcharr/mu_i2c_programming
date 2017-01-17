@@ -113,7 +113,6 @@ int fd;
 static int curr_line = 0;
 
 
-
 int main(int argc, char **argv)
 {
     /* error holds the success / failure message of the bootload operation */
@@ -141,6 +140,7 @@ int main(int argc, char **argv)
 	comm1.WriteData =&WriteData;
 	comm1.MaxTransferSize = 32;
 
+	// init broadcasting address for status
 	#if BRDCST_STAT == 1
 	        if( (fd = socket(AF_INET, SOCK_DGRAM, 0)) < 0 ) {
 			printf("Error creating a socket!!\n");
@@ -167,6 +167,7 @@ int main(int argc, char **argv)
 	        sendaddr.sin_port=htons(ssh_port);
 		broadcast_percentage(fd, sendaddr, 0);
 	#endif
+
 
 	if(OpenConnection() != CYRET_SUCCESS) {
 		printf("Can't acquire I2C bus!\n");
@@ -217,8 +218,8 @@ int main(int argc, char **argv)
 void send_status(unsigned char arrayId, unsigned short rowNum) {
 
 	curr_line++;
-	printf("arrayId: %02x\nRowNum: %d\nCurrLine: %d\n", arrayId, rowNum, curr_line);
-	broadcast_percentage(fd, sendaddr, (uint8_t)(100*curr_line/LINE_CNT));
+	//printf("arrayId: %02x\nRowNum: %d\nCurrLine: %d\n", arrayId, rowNum, curr_line);
+	broadcast_percentage(fd, sendaddr, (uint8_t)(100*curr_line/(LINE_CNT-1)));
 }
 
 uint8_t broadcast_percentage(int fd, struct sockaddr_in addr, uint8_t perc) {
