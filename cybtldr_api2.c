@@ -37,24 +37,28 @@ int CyBtldr_RunAction(CyBtldr_Action action, const char* file, const unsigned ch
     unsigned char bootloaderEntered = 0;
 	
     g_abort = 0;
-
+    printf("1!\n");
     err = CyBtldr_OpenDataFile(file);
     if (CYRET_SUCCESS == err)
     {
+        printf("2! %x\n",err);
         err = CyBtldr_ReadLine(&lineLen, line);
         if (CYRET_SUCCESS == err)
             err = CyBtldr_ParseHeader(lineLen, line, &siliconId, &siliconRev, &chksumtype);
+        printf("3! %x\n",err);
 
         if (CYRET_SUCCESS == err)
         {
             CyBtldr_SetCheckSumType(chksumtype);
             err = CyBtldr_StartBootloadOperation(comm, siliconId, siliconRev, &blVer, securityKey);
             bootloaderEntered = 1;
+            printf("4! %x\n",err);
         }
 
         appId -= 1; /* 1 and 2 are legal inputs to function. 0 and 1 are valid for bootloader component */
         if (appId > 1)
         {
+		printf("Invalid app!\n");
             appId = INVALID_APP;
         }
 
@@ -73,6 +77,7 @@ int CyBtldr_RunAction(CyBtldr_Action action, const char* file, const unsigned ch
 			{
 				/* Single app - restore previous CYRET_SUCCESS */
 				err = CYRET_SUCCESS;
+				printf("5! %x\n",err);
 			}
         }
 
@@ -87,6 +92,7 @@ int CyBtldr_RunAction(CyBtldr_Action action, const char* file, const unsigned ch
                 }
 
                 err = CyBtldr_ReadLine(&lineLen, line);
+		//printf("Line %s read!",line);
                 if (CYRET_SUCCESS == err)
                     err = CyBtldr_ParseRowData(lineLen, line, &arrayId, &rowNum, buffer, &bufSize, &checksum);
                 if (CYRET_SUCCESS == err)

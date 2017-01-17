@@ -111,6 +111,8 @@ int CyBtldr_StartBootloadOperation(CyBtldr_CommunicationsData* comm, unsigned lo
     else if (CyBtldr_TryParseParketStatus(outBuf, outSize, &status) == CYRET_SUCCESS)
         err = status | CYRET_ERR_BTLDR_MASK; //if the response we get back is a valid packet overide the err with the response's status
 
+	printf("ERR: %04x\n",err);
+
     if (CYRET_SUCCESS == err)
     {
         if (CYRET_SUCCESS != status)
